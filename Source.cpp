@@ -1,80 +1,89 @@
-#include<stdlib.h>
-#include <iostream>
-#include <vector>
-#include <algorithm>
-#include <math.h>
+#include "Header.h"
+
 using namespace std;
 
+double dist(pt a, pt b) {
+    return sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2));
+}
 
+Path::Path() {
+    num_of_nodes = 0;
+    last_improvement_status = false;
+}
 
+void Path::add_node(pt& new_node) {
+    if (num_of_nodes > 1) {
+        path.push_back(path[0]);
+        deque<pt>::iterator it = path.begin(),
+            here = it + 1;
+        double best_len = dist(*it, new_node) + dist(new_node, *(it + 1));
+        it++;
 
-
-
-int main()
-{
-    
-    
-    int N;
-    cin >> N;
-    vector<int> cross(N);
-    vector<int> ygrek(N);
-    for (int i = 0; i < N; i++) {
-        int w, v;
-        cin >> v >> w;
-        cross[i] = v;
-        ygrek[i] = w;
-    }
-
-    double **graph = new double* [N];
-    for (int i = 0; i < N; i++)
-    {
-        graph[i] = new double[N];
-    }
-    
-
-    for (int i = 0; i < N; i++)
-    {
-        for (int j = 0; j < N; j++)
-        {
-            graph[i][j] = sqrt((cross[i] - cross[j]) * (cross[i] - cross[j]) + (ygrek[i] - ygrek[j]) * (ygrek[i] - ygrek[j]));
+        for (int i = 0; i < num_of_nodes - 1; i++) {
+            double tmp = dist(*it, new_node) + dist(new_node, *(it + 1));
+            if (tmp < best_len) {
+                best_len = tmp;
+                here = it + 1;
+            }
+            it++;
         }
+
+        path.emplace(here, new_node);
+        path.pop_back();
     }
+    else
+        path.push_back(new_node);
 
+    num_of_nodes++;
+}
 
-    int s = 0;
-    vector<int> vertex;
-    for (int i = 0; i < N; i++)
-        if (i != s)
-            vertex.push_back(i);
+void Path::try_to_improve_2(int v1, int v2) {
 
+    if (v1 > v2) swap(v1, v2);
 
-    double min_path = DBL_MAX;
-    do {
+    double init_dist =
+        dist(path[v1], path[v1 + 1])
+        + dist(path[v2], path[v2 + 1]);
 
+    // improval attempt
+    double new_dist = dist(path[v1], path[v2]) + dist(path[v1 + 1], path[v2 + 1]);
+    if (init_dist > new_dist) {
+        deque<pt>::iterator it1 = next(path.begin(), v1 + 1);
+        deque<pt>::iterator it2 = next(it1, v2 - v1);
+        reverse(it1, it2);
+        last_improvement_status = true;
+    }
+}
 
-        double current_pathweight = 0;
+double Path::length() {
+    double len = 0;
+    for (int i = 0; i < num_of_nodes; i++)
+        len += dist(path[i], path[(i + 1) % num_of_nodes]);
 
+    return len;
+}
 
-        int k = s;
-        for (int i = 0; i < vertex.size(); i++) {
-            current_pathweight += graph[k][vertex[i]];
-            k = vertex[i];
+void Path::local_search_2() {
+    path.push_back(path[0]);
+    for (int i = 0; i < num_of_nodes - 2; i++)
+        for (int j = i + 2; j < num_of_nodes; j++) {
+
+            try_to_improve_2(i, j);
+
+            if (last_improvement_status) {
+                last_improvement_status = false;
+                j = i + 2;
+            }
         }
-        current_pathweight += graph[k][s];
+    path.pop_back();
+}
 
+void Path::show_a() {
+    for (auto p : path)
+        cout << p.id << ": ( " << p.x << ", " << p.y << " )\n";
+}
 
-        min_path = min(min_path, current_pathweight);
-
-    } while (next_permutation(vertex.begin(), vertex.end()));
-
-
-    cout << min_path;
-
-    
-    for (int i = 0; i < N; i++)
-    {
-        delete[] graph[i];
-    }
-    delete[] graph;
-    return 0;
+void Path::show() {
+    for (auto p : path)
+        cout << p.id << " ";
 }
